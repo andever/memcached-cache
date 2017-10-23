@@ -1,5 +1,5 @@
 /**
- *    Copyright 2012-2017 the original author or authors.
+ *    Copyright 2012-2015 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -15,13 +15,8 @@
  */
 package org.mybatis.caches.memcached;
 
-import static java.lang.String.format;
+import java.util.Arrays;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import net.spy.memcached.ConnectionFactory;
 
 /**
  * The Memcached client configuration.
@@ -30,222 +25,177 @@ import net.spy.memcached.ConnectionFactory;
  */
 final class MemcachedConfiguration {
 
-  /**
-   * The key prefix.
-   */
-  private String keyPrefix;
+    /**
+     * The key prefix.
+     */
+    private String keyPrefix;
 
-  /**
-   * The Connection Factory used to establish the connection to Memcached
-   * server(s).
-   */
-  private ConnectionFactory connectionFactory;
+    /**
+     * The Memcached servers.
+     */
+    private String[] servers;
 
-  /**
-   * The Memcached servers.
-   */
-  private List<InetSocketAddress> addresses;
+    // initial, min and max pool sizes
+    private int initConn;
+    private int minConn;
+    private int maxConn;
+    private int maxIdle; // max idle time for avail sockets
+    private long maxBusyTime; // max idle time for avail sockets
+    private long maintSleep;
+    private int socketTO; // default timeout of socket reads
+    private int socketConnectTO; // default timeout of socket
+    // connections
+    // for being alive
+    private boolean failover; // default to failover in event of cache
+    // server dead
+    private boolean failback; // only used if failover is also set ...
+    // controls putting a dead server back
+    // into rotation
+    private boolean nagle; // enable/disable Nagle's algorithm
+    private boolean aliveCheck; // disable health check of socket on checkout
+    /**
+     * The Memcached entries expiration time.
+     */
+    private int expiration;
 
-  /**
-   * The flag to switch from sync to async Memcached get.
-   */
-  private boolean usingAsyncGet;
-
-  /**
-   * Compression enabled flag.
-   */
-  private boolean compressionEnabled;
-
-  /**
-   * The Memcached entries expiration time.
-   */
-  private int expiration;
-
-  /**
-   * The Memcached connection timeout when using async get.
-   */
-  private int timeout;
-
-  /**
-   * The Memcached timeout unit when using async get.
-   */
-  private TimeUnit timeUnit;
-
-  /**
-   * @return the keyPrefix
-   */
-  public String getKeyPrefix() {
-    return keyPrefix;
-  }
-
-  /**
-   * @param keyPrefix the keyPrefix to set
-   */
-  public void setKeyPrefix(String keyPrefix) {
-    this.keyPrefix = keyPrefix;
-  }
-
-  /**
-   * @return the connectionFactory
-   */
-  public ConnectionFactory getConnectionFactory() {
-    return connectionFactory;
-  }
-
-  /**
-   * @param connectionFactory the connectionFactory to set
-   */
-  public void setConnectionFactory(ConnectionFactory connectionFactory) {
-    this.connectionFactory = connectionFactory;
-  }
-
-  /**
-   * @return the addresses
-   */
-  public List<InetSocketAddress> getAddresses() {
-    return addresses;
-  }
-
-  /**
-   * @param addresses the addresses to set
-   */
-  public void setAddresses(List<InetSocketAddress> addresses) {
-    this.addresses = addresses;
-  }
-
-  /**
-   * @return the usingAsyncGet
-   */
-  public boolean isUsingAsyncGet() {
-    return usingAsyncGet;
-  }
-
-  /**
-   * @param usingAsyncGet the usingAsyncGet to set
-   */
-  public void setUsingAsyncGet(boolean usingAsyncGet) {
-    this.usingAsyncGet = usingAsyncGet;
-  }
-
-  /**
-   * @return the compressionEnabled
-   */
-  public boolean isCompressionEnabled() {
-    return compressionEnabled;
-  }
-
-  /**
-   * @param compressionEnabled the compressionEnabled to set
-   */
-  public void setCompressionEnabled(boolean compressionEnabled) {
-    this.compressionEnabled = compressionEnabled;
-  }
-
-  /**
-   * @return the expiration
-   */
-  public int getExpiration() {
-    return expiration;
-  }
-
-  /**
-   * @param expiration the expiration to set
-   */
-  public void setExpiration(int expiration) {
-    this.expiration = expiration;
-  }
-
-  /**
-   * @return the timeout
-   */
-  public int getTimeout() {
-    return timeout;
-  }
-
-  /**
-   * @param timeout the timeout to set
-   */
-  public void setTimeout(int timeout) {
-    this.timeout = timeout;
-  }
-
-  /**
-   * @return the timeUnit
-   */
-  public TimeUnit getTimeUnit() {
-    return timeUnit;
-  }
-
-  /**
-   * @param timeUnit the timeUnit to set
-   */
-  public void setTimeUnit(TimeUnit timeUnit) {
-    this.timeUnit = timeUnit;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int hashCode() {
-    return hash(1, 31, addresses, compressionEnabled, connectionFactory, expiration, keyPrefix, timeUnit, timeout,
-        usingAsyncGet);
-  }
-
-  /**
-   * Computes a hashCode given the input objects.
-   *
-   * @param initialNonZeroOddNumber a non-zero, odd number used as the initial value.
-   * @param multiplierNonZeroOddNumber a non-zero, odd number used as the multiplier.
-   * @param objs the objects to compute hash code.
-   * @return the computed hashCode.
-   */
-  public static int hash(int initialNonZeroOddNumber, int multiplierNonZeroOddNumber, Object... objs) {
-    int result = initialNonZeroOddNumber;
-    for (Object obj : objs) {
-      result = multiplierNonZeroOddNumber * result + (obj != null ? obj.hashCode() : 0);
-    }
-    return result;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
+    /**
+     * @return the keyPrefix
+     */
+    public String getKeyPrefix() {
+        return keyPrefix;
     }
 
-    MemcachedConfiguration other = (MemcachedConfiguration) obj;
-    return eq(addresses, other.addresses) && eq(compressionEnabled, other.compressionEnabled)
-        && eq(connectionFactory, other.connectionFactory) && eq(expiration, other.expiration)
-        && eq(keyPrefix, other.keyPrefix) && eq(timeUnit, other.timeUnit) && eq(timeout, other.timeout)
-        && eq(usingAsyncGet, other.usingAsyncGet);
-  }
+    /**
+     * @param keyPrefix the keyPrefix to set
+     */
+    public void setKeyPrefix(String keyPrefix) {
+        this.keyPrefix = keyPrefix;
+    }
 
-  /**
-   * Verifies input objects are equal.
-   *
-   * @param o1 the first argument to compare
-   * @param o2 the second argument to compare
-   * @return true, if the input arguments are equal, false otherwise.
-   */
-  private static <O> boolean eq(O o1, O o2) {
-    return o1 != null ? o1.equals(o2) : o2 == null;
-  }
+    public String[] getServers() {
+        return servers;
+    }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String toString() {
-    return format(
-        "MemcachedConfiguration [addresses=%s, compressionEnabled=%s, connectionFactory=%s, , expiration=%s, keyPrefix=%s, timeUnit=%s, timeout=%s, usingAsyncGet=%s]",
-        addresses, compressionEnabled, connectionFactory, expiration, keyPrefix, timeUnit, timeout, usingAsyncGet);
-  }
+    public void setServers(String[] servers) {
+        this.servers = servers;
+    }
+
+    public int getInitConn() {
+        return initConn;
+    }
+
+    public void setInitConn(int initConn) {
+        this.initConn = initConn;
+    }
+
+    public int getMinConn() {
+        return minConn;
+    }
+
+    public void setMinConn(int minConn) {
+        this.minConn = minConn;
+    }
+
+    public int getMaxConn() {
+        return maxConn;
+    }
+
+    public void setMaxConn(int maxConn) {
+        this.maxConn = maxConn;
+    }
+
+    public int getMaxIdle() {
+        return maxIdle;
+    }
+
+    public void setMaxIdle(int maxIdle) {
+        this.maxIdle = maxIdle;
+    }
+
+    public long getMaxBusyTime() {
+        return maxBusyTime;
+    }
+
+    public void setMaxBusyTime(long maxBusyTime) {
+        this.maxBusyTime = maxBusyTime;
+    }
+
+    public long getMaintSleep() {
+        return maintSleep;
+    }
+
+    public void setMaintSleep(long maintSleep) {
+        this.maintSleep = maintSleep;
+    }
+
+    public int getSocketTO() {
+        return socketTO;
+    }
+
+    public void setSocketTO(int socketTO) {
+        this.socketTO = socketTO;
+    }
+
+    public int getSocketConnectTO() {
+        return socketConnectTO;
+    }
+
+    public void setSocketConnectTO(int socketConnectTO) {
+        this.socketConnectTO = socketConnectTO;
+    }
+
+    public boolean isFailover() {
+        return failover;
+    }
+
+    public void setFailover(boolean failover) {
+        this.failover = failover;
+    }
+
+    public boolean isFailback() {
+        return failback;
+    }
+
+    public void setFailback(boolean failback) {
+        this.failback = failback;
+    }
+
+    public boolean isNagle() {
+        return nagle;
+    }
+
+    public void setNagle(boolean nagle) {
+        this.nagle = nagle;
+    }
+
+    public boolean isAliveCheck() {
+        return aliveCheck;
+    }
+
+    public void setAliveCheck(boolean aliveCheck) {
+        this.aliveCheck = aliveCheck;
+    }
+
+    /**
+     * @return the expiration
+     */
+    public int getExpiration() {
+        return expiration;
+    }
+
+    /**
+     * @param expiration the expiration to set
+     */
+    public void setExpiration(int expiration) {
+        this.expiration = expiration;
+    }
+
+    @Override
+    public String toString() {
+        return "MemcachedConfiguration [keyPrefix=" + keyPrefix + ", servers=" + Arrays.toString(servers) + ", initConn=" + initConn + ", minConn="
+                + minConn + ", maxConn=" + maxConn + ", maxIdle=" + maxIdle + ", maxBusyTime=" + maxBusyTime + ", maintSleep=" + maintSleep
+                + ", socketTO=" + socketTO + ", socketConnectTO=" + socketConnectTO + ", failover=" + failover + ", failback=" + failback
+                + ", nagle=" + nagle + ", aliveCheck=" + aliveCheck + ", expiration=" + expiration + "]";
+    }
 
 }
