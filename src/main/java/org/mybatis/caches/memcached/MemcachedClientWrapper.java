@@ -326,7 +326,7 @@ final class MemcachedClientWrapper {
                 client.delete(key);
             }
             
-            result = client.delete(groupKeyString);
+            result = client.cas(groupKeyString, new HashSet<String>(), group.getCas());
         } while(!result);
         
 	}
